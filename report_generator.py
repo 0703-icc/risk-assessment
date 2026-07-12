@@ -23,12 +23,14 @@ from config import INDEPENDENT_ITEMS, REFERENCE_ITEMS
 _CHINESE_FONT_REGISTERED = False
 _CHINESE_FONT_NAME = "Helvetica"  # 默认回退
 
-# 项目根目录（基于本文件位置向上一层）
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 项目根目录（基于本文件位置）
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # 项目自带字体（最高优先级）+ 系统字体回退
 _CANDIDATE_FONTS = [
-    # 项目自带字体（确保跨平台一致）
+    # GitHub扁平结构（字体直接在根目录）
+    (os.path.join(_PROJECT_ROOT, "SimHei.ttf"), 0),
+    # 项目标准结构（字体在fonts目录）
     (os.path.join(_PROJECT_ROOT, "fonts", "SimHei.ttf"), 0),
     # Windows
     ("C:/Windows/Fonts/simhei.ttf", 0),
@@ -55,7 +57,6 @@ def _register_chinese_font():
                 break
             except Exception:
                 try:
-                    # 某些 .ttc 文件需要指定 subfontIndex
                     pdfmetrics.registerFont(TTFont("ChineseFont", font_path, subfontIndex=0))
                     _CHINESE_FONT_NAME = "ChineseFont"
                     break
@@ -68,7 +69,6 @@ def _register_chinese_font():
 class ReportGenerator:
     """报告生成器"""
 
-    # 颜色定义
     COLOR_SEVERE = colors.HexColor("#FF4B4B")
     COLOR_WARNING = colors.HexColor("#FFD700")
     COLOR_GRAY = colors.HexColor("#808080")
@@ -87,7 +87,6 @@ class ReportGenerator:
 
         risk_items = get_report_risk_items(report["id"], self.db_path)
 
-        # 分类和排序
         independent_items = []
         reference_items = []
 
@@ -97,11 +96,8 @@ class ReportGenerator:
             else:
                 reference_items.append(item)
 
-        # 独立项按严重程度排序（严重在前）
         severity_order = {"严重": 0, "警示": 1, None: 2}
         independent_items.sort(key=lambda x: severity_order.get(x["severity"], 2))
-
-        # 参考项按序号排序
         reference_items.sort(key=lambda x: x["item_code"])
 
         return {
@@ -122,13 +118,12 @@ class ReportGenerator:
 
         font_name = _CHINESE_FONT_NAME
 
-        # 自定义样式（全部使用中文字体）
         title_style = ParagraphStyle(
             'CustomTitle',
             fontName=font_name,
             fontSize=20,
             spaceAfter=30,
-            alignment=1  # 居中
+            alignment=1
         )
         normal_style = ParagraphStyle(
             'ChineseNormal',
@@ -144,17 +139,14 @@ class ReportGenerator:
             spaceAfter=10
         )
 
-        # 报告标题
         elements.append(Paragraph("风险评估报告", title_style))
         elements.append(Spacer(1, 20))
 
-        # 基本信息
         report = data["report"]
         elements.append(Paragraph(f"<b>开发商名称：</b>{report['company_name']}", normal_style))
         elements.append(Paragraph(f"<b>评估时间：</b>{report['evaluation_time']}", normal_style))
         elements.append(Spacer(1, 20))
 
-        # 独立项
         elements.append(Paragraph("<b>独立项评估</b>", heading_style))
         elements.append(Spacer(1, 10))
 
@@ -164,7 +156,6 @@ class ReportGenerator:
 
         elements.append(Spacer(1, 20))
 
-        # 参考项
         elements.append(Paragraph("<b>参考项评估</b>", heading_style))
         elements.append(Spacer(1, 10))
 
@@ -184,7 +175,6 @@ class ReportGenerator:
         item_name = item["item_name"]
         data_source = item.get("data_source", "")
 
-        # 根据状态确定颜色
         if status == "已触发":
             if severity == "严重":
                 color = "#FF4B4B"
